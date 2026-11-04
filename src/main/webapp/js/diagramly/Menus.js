@@ -596,7 +596,7 @@
 						editorUi.freehandWindow.startDrawing();
 					}
 					
-					editorUi.freehandWindow.window.setVisible(editorUi.freehandWindow.isDrawing());
+					editorUi.freehandWindow.window.setVisible(true);
 				}
 			}, null, null, 'F'));
 			
@@ -642,7 +642,7 @@
 						}
 					}
 
-					wnd.window.setVisible(wnd.isDrawing());
+					wnd.window.setVisible(true);
 				}
 			}, null, null, 'E')).isEnabled = isGraphEnabled;
 		}
