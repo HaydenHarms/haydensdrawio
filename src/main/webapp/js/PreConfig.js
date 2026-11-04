@@ -11,3 +11,9 @@ window.DRAWIO_LIGHTBOX_URL = null; // Replace with your lightbox URL, eg. https:
 window.DRAW_MATH_URL = 'math4/es5';
 window.DRAWIO_CONFIG = null; // Replace with your custom draw.io configurations. For more details, https://www.drawio.com/doc/faq/configure-diagram-editor
 urlParams['sync'] = 'manual';
+
+// Offline drawing engine: no cloud storage or integrations, saves to this
+// device and opens on a blank diagram. URL parameters still override these.
+if (urlParams['offline'] == null) urlParams['offline'] = '1';
+if (urlParams['mode'] == null) urlParams['mode'] = 'device';
+if (urlParams['splash'] == null) urlParams['splash'] = '0';
