@@ -11104,10 +11104,10 @@ var FreehandWindow = function(editorUi, x, y, w, h, withBrush)
 
 	// Drawing modes: the freehand tool without and with the brush (stored in
 	// the freehand tool as before), the polygon tool (see PolygonTool) and
-	// the tie tool (see TieTool). The polygon and tie modes are stored in the
-	// editor so that they are kept if the window is created again (eg. after
-	// a theme change). Without the brush, the freehand tool is used in the
-	// mode it has.
+	// the tie tool (see TieTool) and the eraser (see EraserTool). The polygon,
+	// tie and eraser modes are stored in the editor so that they are kept if
+	// the window is created again (eg. after a theme change). Without the
+	// brush, the freehand tool is used in the mode it has.
 	var modeSelect = document.createElement('select');
 	modeSelect.style.boxSizing = 'border-box';
 	modeSelect.style.minWidth = '0px';
@@ -11116,11 +11116,11 @@ var FreehandWindow = function(editorUi, x, y, w, h, withBrush)
 	modeSelect.style.padding = '0px 2px';
 	modeSelect.style.textOverflow = 'ellipsis';
 
-	var addMode = function(value, key)
+	var addMode = function(value, key, defaultValue)
 	{
 		var option = document.createElement('option');
 		option.setAttribute('value', value);
-		mxUtils.write(option, mxResources.get(key));
+		mxUtils.write(option, mxResources.get(key, null, defaultValue));
 		modeSelect.appendChild(option);
 	};
 
@@ -11133,7 +11133,9 @@ var FreehandWindow = function(editorUi, x, y, w, h, withBrush)
 
 	addMode('polygon', 'polygon');
 	addMode('tie', 'tie');
-	modeSelect.value = (editorUi.freehandTieMode) ? 'tie' :
+	addMode('eraser', 'eraser', 'Eraser');
+	modeSelect.value = (editorUi.freehandEraserMode) ? 'eraser' :
+		(editorUi.freehandTieMode) ? 'tie' :
 		((editorUi.freehandPolygonMode) ? 'polygon' :
 		((withBrush && graph.freehand.isPerfectFreehandMode()) ?
 		'brush' : 'freehand'));
@@ -11295,21 +11297,23 @@ var FreehandWindow = function(editorUi, x, y, w, h, withBrush)
 		var mode = modeSelect.value;
 		editorUi.freehandPolygonMode = mode == 'polygon';
 		editorUi.freehandTieMode = mode == 'tie';
+		editorUi.freehandEraserMode = mode == 'eraser';
 		selectTies.style.display = (mode == 'tie') ? '' : 'none';
 
 		if (withBrush)
 		{
-			if (mode != 'polygon' && mode != 'tie')
+			if (mode == 'freehand' || mode == 'brush')
 			{
 				graph.freehand.setPerfectFreehandMode(mode == 'brush');
 			}
 
 			brushSize.style.visibility = (mode == 'brush') ? 'visible' : 'hidden';
 
-			// Smoothing only applies to the freehand tool and ties have no color
+			// Smoothing only applies to the freehand tool and ties and the
+			// eraser have no color
 			settings.style.visibility = (mode == 'polygon') ? 'hidden' : 'visible';
-			settings.style.display = (mode == 'tie') ? 'none' : '';
-			btn.style.display = (mode == 'tie') ? 'none' : '';
+			settings.style.display = (mode == 'tie' || mode == 'eraser') ? 'none' : '';
+			btn.style.display = (mode == 'tie' || mode == 'eraser') ? 'none' : '';
 		}
 	};
 
@@ -11320,7 +11324,8 @@ var FreehandWindow = function(editorUi, x, y, w, h, withBrush)
 	 */
 	var getActiveMode = function()
 	{
-		return (editorUi.tieTool != null && editorUi.tieTool.isActive()) ? 'tie' :
+		return (editorUi.eraserTool != null && editorUi.eraserTool.isActive()) ? 'eraser' :
+			(editorUi.tieTool != null && editorUi.tieTool.isActive()) ? 'tie' :
 			((editorUi.polygonTool != null && editorUi.polygonTool.isActive()) ? 'polygon' :
 			((graph.freehand.isDrawing()) ? 'freehand' : null));
 	};
@@ -11356,6 +11361,15 @@ var FreehandWindow = function(editorUi, x, y, w, h, withBrush)
 
 			editorUi.tieTool.start();
 		}
+		else if (modeSelect.value == 'eraser')
+		{
+			if (editorUi.eraserTool == null)
+			{
+				editorUi.eraserTool = new EraserTool(editorUi);
+			}
+
+			editorUi.eraserTool.start();
+		}
 		else
 		{
 			// Stops the polygon tool (freehandStateChanged)
@@ -11378,16 +11392,32 @@ var FreehandWindow = function(editorUi, x, y, w, h, withBrush)
 			editorUi.tieTool.cancel();
 		}
 
+		if (editorUi.eraserTool != null)
+		{
+			editorUi.eraserTool.cancel();
+		}
+
 		if (graph.freehand.isDrawing())
 		{
 			graph.freehand.stopDrawing();
 		}
 	};
 
-	// Continues drawing in the new mode
-	mxEvent.addListener(modeSelect, 'change', mxUtils.bind(this, function()
+	/**
+	 * Returns the selected mode.
+	 */
+	this.getMode = function()
+	{
+		return modeSelect.value;
+	};
+
+	/**
+	 * Selects the given mode and continues drawing in the new mode.
+	 */
+	this.setMode = function(mode)
 	{
 		var active = getActiveMode();
+		modeSelect.value = mode;
 		updateMode();
 
 		if (active != null && active != ((modeSelect.value == 'brush') ?
@@ -11396,6 +11426,11 @@ var FreehandWindow = function(editorUi, x, y, w, h, withBrush)
 			this.stopDrawing();
 			this.startDrawing();
 		}
+	};
+
+	mxEvent.addListener(modeSelect, 'change', mxUtils.bind(this, function()
+	{
+		this.setMode(modeSelect.value);
 	}));
 
 	var startBtn = mxUtils.button(mxResources.get('startDrawing'), mxUtils.bind(this, function()
@@ -11443,6 +11478,7 @@ var FreehandWindow = function(editorUi, x, y, w, h, withBrush)
 	graph.addListener('freehandStateChanged', updateButton);
 	graph.addListener('polygonStateChanged', updateButton);
 	graph.addListener('tieToolStateChanged', updateButton);
+	graph.addListener('eraserToolStateChanged', updateButton);
 	
 	this.window.addListener('show', mxUtils.bind(this, function()
 	{
@@ -27749,6 +27785,512 @@ TieTool.prototype.updatePreview = function()
 		this.node.setAttribute('d', 'M ' + Math.round(this.first.x * 100) / 100 + ' ' +
 			Math.round(this.first.y * 100) / 100 + ' L ' + Math.round(this.current.x * 100) / 100 +
 			' ' + Math.round(this.current.y * 100) / 100);
+	}
+	else if (this.node != null)
+	{
+		if (this.node.parentNode != null)
+		{
+			this.node.parentNode.removeChild(this.node);
+		}
+
+		this.node = null;
+	}
+};
+
+/**
+ * Eraser mode of the freehand window (see FreehandWindow). Dragging over
+ * freehand drawings removes the drawings that the eraser touches. All
+ * drawings that are removed in one drag are removed in a single undoable
+ * edit. The tool keeps erasing until it is stopped. Changes of the erasing
+ * state fire an eraserToolStateChanged event on the graph.
+ *
+ * The eraser is painted in screen units in the overlay pane. The mouse events
+ * of the erasing are consumed before the handlers of the graph see them,
+ * except for panning gestures (space, right or middle button, pinch).
+ */
+var EraserTool = function(editorUi)
+{
+	this.editorUi = editorUi;
+	this.graph = editorUi.editor.graph;
+	this.init();
+};
+
+/**
+ * Specifies if the tool is erasing.
+ */
+EraserTool.prototype.active = false;
+
+/**
+ * Radius of the eraser in screen pixels.
+ */
+EraserTool.prototype.radius = 8;
+
+/**
+ * Color of the eraser.
+ */
+EraserTool.prototype.color = '#e0443e';
+
+/**
+ * Installs the listeners of the tool, which do nothing while it is not
+ * erasing.
+ */
+EraserTool.prototype.init = function()
+{
+	var graph = this.graph;
+	var tool = this;
+
+	graph.addListener(mxEvent.FIRE_MOUSE_EVENT, mxUtils.bind(this, function(sender, evt)
+	{
+		if (this.active)
+		{
+			var me = evt.getProperty('event');
+
+			if (evt.getProperty('eventName') == mxEvent.MOUSE_DOWN)
+			{
+				this.panning = this.isPanningEvent(me);
+
+				if (this.panning)
+				{
+					this.reset(true);
+				}
+			}
+
+			if (!this.panning)
+			{
+				me.consume();
+			}
+		}
+	}));
+
+	graph.addMouseListener(
+	{
+		mouseDown: mxUtils.bind(this, function(sender, me)
+		{
+			if (this.active && !this.panning && graph.isEnabled())
+			{
+				this.candidates = this.getCandidates();
+				this.erased = [];
+				this.last = null;
+				this.eraseTo(me);
+				this.updatePreview(me);
+			}
+		}),
+		mouseMove: mxUtils.bind(this, function(sender, me)
+		{
+			if (this.active && !this.panning)
+			{
+				if (this.candidates != null)
+				{
+					this.eraseTo(me);
+				}
+
+				this.updatePreview(me);
+			}
+		}),
+		mouseUp: mxUtils.bind(this, function(sender, me)
+		{
+			if (this.active && !this.panning && this.candidates != null)
+			{
+				this.eraseTo(me);
+				this.commit();
+			}
+
+			this.panning = false;
+		})
+	});
+
+	// Double clicks are ignored while erasing. Wraps the double click handler
+	// as it inserts text or shows the shape picker before firing the double
+	// click event.
+	var graphDblClick = graph.dblClick;
+
+	graph.dblClick = function(evt, cell)
+	{
+		if (tool.active)
+		{
+			mxEvent.consume(evt);
+		}
+		else
+		{
+			graphDblClick.apply(this, arguments);
+		}
+	};
+
+	graph.addListener(mxEvent.ESCAPE, mxUtils.bind(this, function()
+	{
+		this.cancel();
+	}));
+
+	// Stops erasing if another drawing tool starts
+	graph.addListener('freehandStateChanged', mxUtils.bind(this, function()
+	{
+		if (graph.freehand != null && graph.freehand.isDrawing())
+		{
+			this.cancel();
+		}
+	}));
+
+	graph.addListener('polygonStateChanged', mxUtils.bind(this, function()
+	{
+		if (this.editorUi.polygonTool != null && this.editorUi.polygonTool.isActive())
+		{
+			this.cancel();
+		}
+	}));
+
+	graph.addListener('tieToolStateChanged', mxUtils.bind(this, function()
+	{
+		if (this.editorUi.tieTool != null && this.editorUi.tieTool.isActive())
+		{
+			this.cancel();
+		}
+	}));
+
+	graph.getModel().addListener(mxEvent.CHANGE, mxUtils.bind(this, function(sender, evt)
+	{
+		var changes = (this.active) ? evt.getProperty('edit').changes : [];
+
+		for (var i = 0; i < changes.length; i++)
+		{
+			if (changes[i] instanceof mxRootChange)
+			{
+				this.cancel();
+				break;
+			}
+		}
+	}));
+
+	// Keeps the selection empty while erasing so that keystrokes are not
+	// typed into labels (eg. after undo selects the restored drawings)
+	graph.getSelectionModel().addListener(mxEvent.CHANGE, mxUtils.bind(this, function()
+	{
+		if (this.active && !graph.isSelectionEmpty())
+		{
+			graph.clearSelection();
+		}
+	}));
+
+	// Hides the eraser if the mouse leaves the diagram
+	mxEvent.addListener(graph.container, 'mouseleave', mxUtils.bind(this, function()
+	{
+		if (this.candidates == null)
+		{
+			this.updatePreview(null);
+		}
+	}));
+
+	// Hides the hover icons while erasing
+	var hoverIcons = this.editorUi.hoverIcons;
+
+	if (hoverIcons != null)
+	{
+		var hoverIconsIsResetEvent = hoverIcons.isResetEvent;
+
+		hoverIcons.isResetEvent = function()
+		{
+			return tool.active || hoverIconsIsResetEvent.apply(this, arguments);
+		};
+	}
+};
+
+/**
+ * Returns true if the tool is erasing.
+ */
+EraserTool.prototype.isActive = function()
+{
+	return this.active;
+};
+
+/**
+ * Returns true if the given mouse event starts a panning gesture.
+ */
+EraserTool.prototype.isPanningEvent = PolygonTool.prototype.isPanningEvent;
+
+/**
+ * Returns true if the given cell is a freehand drawing that can be erased.
+ */
+EraserTool.prototype.isErasable = function(cell)
+{
+	var graph = this.graph;
+
+	if (graph.model.isVertex(cell) && graph.isCellDeletable(cell) &&
+		!graph.isCellLocked(cell))
+	{
+		var shape = graph.getCurrentCellStyle(cell)[mxConstants.STYLE_SHAPE];
+
+		return shape != null && shape.substring(0, 8) == 'stencil(';
+	}
+
+	return false;
+};
+
+/**
+ * Returns the visible states of the freehand drawings that can be erased.
+ */
+EraserTool.prototype.getCandidates = function()
+{
+	var graph = this.graph;
+	var result = [];
+
+	graph.model.filterDescendants(mxUtils.bind(this, function(cell)
+	{
+		var state = graph.view.getState(cell);
+
+		if (state != null && state.shape != null && state.shape.node != null &&
+			this.isErasable(cell))
+		{
+			result.push(state);
+		}
+
+		return false;
+	}));
+
+	return result;
+};
+
+/**
+ * Returns true if the given state is painted at the given client point.
+ */
+EraserTool.prototype.isHit = function(state, x, y)
+{
+	var paths = state.shape.node.getElementsByTagName('path');
+
+	for (var i = 0; i < paths.length; i++)
+	{
+		var path = paths[i];
+		var ctm = (path.getScreenCTM != null) ? path.getScreenCTM() : null;
+
+		if (ctm != null && path.isPointInStroke != null)
+		{
+			var pt = path.ownerSVGElement.createSVGPoint();
+			pt.x = x;
+			pt.y = y;
+			pt = pt.matrixTransform(ctm.inverse());
+
+			// Includes the transparent stroke of the hit detection
+			var fill = path.getAttribute('fill');
+
+			if (path.isPointInStroke(pt) || (fill != null && fill != 'none' &&
+				fill != 'transparent' && path.isPointInFill(pt)))
+			{
+				return true;
+			}
+		}
+	}
+
+	return false;
+};
+
+/**
+ * Hides the drawings that the eraser touches between the last and the
+ * position of the given mouse event.
+ */
+EraserTool.prototype.eraseTo = function(me)
+{
+	var evt = me.getEvent();
+	var p = new mxPoint(mxEvent.getClientX(evt), mxEvent.getClientY(evt));
+	var p0 = (this.last != null) ? this.last : p;
+	var r = this.radius;
+	var dx = p.x - p0.x;
+	var dy = p.y - p0.y;
+	var steps = Math.max(1, Math.ceil(Math.sqrt(dx * dx + dy * dy) / (r / 2)));
+	this.last = p;
+
+	// Points of the eraser along the movement
+	var samples = [];
+
+	for (var i = 1; i <= steps; i++)
+	{
+		var cx = p0.x + dx * i / steps;
+		var cy = p0.y + dy * i / steps;
+		samples.push([cx, cy]);
+
+		for (var a = 0; a < 8; a++)
+		{
+			samples.push([cx + r * Math.cos(a * Math.PI / 4),
+				cy + r * Math.sin(a * Math.PI / 4)]);
+		}
+	}
+
+	for (var i = 0; i < this.candidates.length; i++)
+	{
+		var state = this.candidates[i];
+
+		if (state != null)
+		{
+			var b = state.shape.node.getBoundingClientRect();
+
+			for (var j = 0; j < samples.length; j++)
+			{
+				var x = samples[j][0];
+				var y = samples[j][1];
+
+				if (x >= b.left - r && x <= b.right + r && y >= b.top - r &&
+					y <= b.bottom + r && this.isHit(state, x, y))
+				{
+					this.setVisible(state, false);
+					this.erased.push(state.cell);
+					this.candidates[i] = null;
+					break;
+				}
+			}
+		}
+	}
+};
+
+/**
+ * Shows or hides the shape and label of the given state.
+ */
+EraserTool.prototype.setVisible = function(state, visible)
+{
+	var value = (visible) ? '' : 'hidden';
+	state.shape.node.style.visibility = value;
+
+	if (state.text != null && state.text.node != null)
+	{
+		state.text.node.style.visibility = value;
+	}
+};
+
+/**
+ * Removes the drawings that were erased in the current drag.
+ */
+EraserTool.prototype.commit = function()
+{
+	var cells = this.erased;
+	this.candidates = null;
+	this.erased = null;
+	this.last = null;
+
+	if (cells != null && cells.length > 0)
+	{
+		this.graph.removeCells(cells, true);
+	}
+};
+
+/**
+ * Restores the drawings of the current drag and hides the eraser if
+ * hidePreview is true.
+ */
+EraserTool.prototype.reset = function(hidePreview)
+{
+	if (this.erased != null)
+	{
+		for (var i = 0; i < this.erased.length; i++)
+		{
+			var state = this.graph.view.getState(this.erased[i]);
+
+			if (state != null && state.shape != null && state.shape.node != null)
+			{
+				this.setVisible(state, true);
+			}
+		}
+	}
+
+	this.candidates = null;
+	this.erased = null;
+	this.last = null;
+
+	if (hidePreview)
+	{
+		this.updatePreview(null);
+	}
+};
+
+/**
+ * Starts erasing and stops the freehand, the polygon and the tie tool.
+ */
+EraserTool.prototype.start = function()
+{
+	var graph = this.graph;
+
+	if (!this.active && graph.isEnabled())
+	{
+		if (graph.freehand != null && graph.freehand.isDrawing())
+		{
+			graph.freehand.stopDrawing();
+		}
+
+		if (this.editorUi.polygonTool != null)
+		{
+			this.editorUi.polygonTool.cancel();
+		}
+
+		if (this.editorUi.tieTool != null)
+		{
+			this.editorUi.tieTool.cancel();
+		}
+
+		graph.stopEditing(false);
+		graph.clearSelection();
+
+		if (this.editorUi.hoverIcons != null)
+		{
+			this.editorUi.hoverIcons.reset();
+		}
+
+		this.panning = false;
+		this.active = true;
+		graph.container.classList.add('geEraserMode');
+		graph.fireEvent(new mxEventObject('eraserToolStateChanged'));
+	}
+};
+
+/**
+ * Stops erasing and keeps the drawings of an unfinished drag.
+ */
+EraserTool.prototype.cancel = function()
+{
+	if (this.active)
+	{
+		this.active = false;
+		this.reset(true);
+
+		if (this.graph.container != null)
+		{
+			this.graph.container.classList.remove('geEraserMode');
+		}
+
+		this.graph.fireEvent(new mxEventObject('eraserToolStateChanged'));
+	}
+};
+
+/**
+ * Stops erasing when the editor is destroyed.
+ */
+EraserTool.prototype.destroy = function()
+{
+	this.cancel();
+};
+
+/**
+ * Paints the eraser at the position of the given mouse event or hides it if
+ * the event is null.
+ */
+EraserTool.prototype.updatePreview = function(me)
+{
+	var graph = this.graph;
+
+	if (me != null && this.active)
+	{
+		if (this.node == null)
+		{
+			this.node = document.createElementNS(mxConstants.NS_SVG, 'circle');
+			this.node.setAttribute('r', this.radius);
+			this.node.setAttribute('fill', this.color);
+			this.node.setAttribute('fill-opacity', '0.15');
+			this.node.setAttribute('stroke', this.color);
+			this.node.setAttribute('stroke-width', '1.5');
+			this.node.setAttribute('pointer-events', 'none');
+		}
+
+		if (this.node.parentNode != graph.view.getOverlayPane())
+		{
+			graph.view.getOverlayPane().appendChild(this.node);
+		}
+
+		this.node.setAttribute('cx', Math.round(me.getGraphX() * 100) / 100);
+		this.node.setAttribute('cy', Math.round(me.getGraphY() * 100) / 100);
 	}
 	else if (this.node != null)
 	{

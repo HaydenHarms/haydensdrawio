@@ -1,9 +1,10 @@
-# Publishes the draw.io editor (src/main/webapp) to GitHub Pages
+# Builds the draw.io editor from source and publishes src/main/webapp to GitHub Pages
 name: Deploy editor to GitHub Pages
 
 on:
   push:
     branches: [main]
+  pull_request:
   workflow_dispatch:
 
 permissions:
@@ -12,23 +13,42 @@ permissions:
   id-token: write
 
 concurrency:
-  group: pages
+  group: pages-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            src/main/webapp
+            etc/build
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      # Rebuilds app.min.js and the other bundles from the sources
+      - name: Build
+        run: |
+          command -v ant || (sudo apt-get update && sudo apt-get install -y ant)
+          cd etc/build
+          ant app
+      - run: touch src/main/webapp/.nojekyll
+      - uses: actions/configure-pages@v5
+        if: github.event_name != 'pull_request'
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: src/main/webapp
+
   deploy:
+    needs: build
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - uses: actions/checkout@v4
-        with:
-          sparse-checkout: src/main/webapp
-      - run: touch src/main/webapp/.nojekyll
-      - uses: actions/configure-pages@v5
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: src/main/webapp
       - id: deployment
         uses: actions/deploy-pages@v4

@@ -1047,6 +1047,7 @@ textAlignment=Text Alignment
 textOpacity=Text Opacity
 theme=Theme
 tie=Tie
+eraser=Eraser
 timeout=Timeout
 title=Title
 to=to

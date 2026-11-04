@@ -545,29 +545,37 @@
 	
 		if (window.mxFreehand)
 		{
+			// Creates the freehand window if it does not exist
+			var getFreehandWindow = function()
+			{
+				if (editorUi.freehandWindow == null)
+				{
+					var saved = mxSettings.getWindowState('freehand');
+					var fx = (saved != null && saved.x != null) ? saved.x :
+						document.body.offsetWidth - 420;
+					var fy = (saved != null && saved.y != null) ? saved.y : 102;
+					var fw = (saved != null && saved.w != null) ? saved.w : 180;
+					var fh = (saved != null && saved.h != null) ? saved.h : 126;
+
+					editorUi.freehandWindow = new FreehandWindow(
+						editorUi, fx, fy, fw, fh, true);
+					editorUi.installWindowPersistence('freehand', editorUi.freehandWindow);
+
+					if (saved != null)
+					{
+						editorUi.restoreWindowState('freehand', editorUi.freehandWindow);
+					}
+				}
+
+				return editorUi.freehandWindow;
+			};
+
 			var freehandAction = editorUi.actions.put('insertFreehand', new Action('freehand', function()
 			{
 				if (graph.isEnabled())
 				{
-					if (editorUi.freehandWindow == null)
-					{
-						var saved = mxSettings.getWindowState('freehand');
-						var fx = (saved != null && saved.x != null) ? saved.x :
-							document.body.offsetWidth - 420;
-						var fy = (saved != null && saved.y != null) ? saved.y : 102;
-						var fw = (saved != null && saved.w != null) ? saved.w : 180;
-						var fh = (saved != null && saved.h != null) ? saved.h : 126;
+					getFreehandWindow();
 
-						editorUi.freehandWindow = new FreehandWindow(
-							editorUi, fx, fy, fw, fh, true);
-						editorUi.installWindowPersistence('freehand', editorUi.freehandWindow);
-
-						if (saved != null)
-						{
-							editorUi.restoreWindowState('freehand', editorUi.freehandWindow);
-						}
-					}
-					
 					// Draws in the mode of the window (see FreehandWindow)
 					if (editorUi.freehandWindow.isDrawing())
 					{
@@ -593,6 +601,41 @@
 			{
 				return editorUi.freehandWindow != null && editorUi.freehandWindow.window.isVisible();
 			});
+
+			// Switches between the eraser and the previous mode of the freehand
+			// window and starts erasing if nothing is drawing
+			var previousFreehandMode = null;
+
+			editorUi.actions.put('freehandEraser', new Action(mxResources.get('eraser', null, 'Eraser'), function()
+			{
+				if (graph.isEnabled())
+				{
+					var wnd = getFreehandWindow();
+					var mode = wnd.getMode();
+
+					if (mode == 'eraser' && wnd.isDrawing())
+					{
+						wnd.setMode((previousFreehandMode != null) ?
+							previousFreehandMode : 'freehand');
+					}
+					else
+					{
+						if (mode != 'eraser')
+						{
+							previousFreehandMode = mode;
+						}
+
+						wnd.setMode('eraser');
+
+						if (!wnd.isDrawing())
+						{
+							wnd.startDrawing();
+						}
+					}
+
+					wnd.window.setVisible(wnd.isDrawing());
+				}
+			}, null, null, 'E')).isEnabled = isGraphEnabled;
 		}
 		
 		editorUi.actions.put('exportXml', new Action('formatXml' + '...', function()

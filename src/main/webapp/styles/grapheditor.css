@@ -423,7 +423,9 @@ div[id*="dgeMermaidOutput-"] {
 .geFreehandMode,
 .geFreehandMode *,
 .gePolygonMode,
-.gePolygonMode * {
+.gePolygonMode *,
+.geEraserMode,
+.geEraserMode * {
 	cursor: crosshair !important;
 }
 
