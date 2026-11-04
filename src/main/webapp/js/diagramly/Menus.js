@@ -570,6 +570,9 @@
 				return editorUi.freehandWindow;
 			};
 
+			// Mode of the freehand window before switching to the eraser
+			var previousFreehandMode = null;
+
 			var freehandAction = editorUi.actions.put('insertFreehand', new Action('freehand', function()
 			{
 				if (graph.isEnabled())
@@ -583,12 +586,19 @@
 					}
 					else
 					{
+						// Starts the pen instead of the eraser
+						if (editorUi.freehandWindow.getMode() == 'eraser')
+						{
+							editorUi.freehandWindow.setMode((previousFreehandMode != null) ?
+								previousFreehandMode : 'freehand');
+						}
+
 						editorUi.freehandWindow.startDrawing();
 					}
 					
 					editorUi.freehandWindow.window.setVisible(editorUi.freehandWindow.isDrawing());
 				}
-			}, null, null, 'X'));
+			}, null, null, 'F'));
 			
 			freehandAction.isEnabled = function()
 			{
@@ -604,7 +614,6 @@
 
 			// Switches between the eraser and the previous mode of the freehand
 			// window and starts erasing if nothing is drawing
-			var previousFreehandMode = null;
 
 			editorUi.actions.put('freehandEraser', new Action(mxResources.get('eraser', null, 'Eraser'), function()
 			{
@@ -5409,7 +5418,7 @@
 					!mxEvent.isControlDown(evt) && !mxEvent.isMetaDown(evt) &&
 					graph.isMouseInsertPoint()) ? graph.getInsertPoint() : null);
 			}
-		}, null, null, 'F')).isEnabled = isGraphEnabled;
+		}, null, null, 'X')).isEnabled = isGraphEnabled;
 		
 		editorUi.actions.put('insertRhombus', new Action('rhombus', function(evt)
 		{

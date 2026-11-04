@@ -23470,11 +23470,11 @@
 			this.keyHandler.bindAction(65, false, 'insertText'); // A
 			this.keyHandler.bindAction(83, false, 'insertNote'); // S
 			this.keyHandler.bindAction(68, false, 'insertRectangle'); // D
-			this.keyHandler.bindAction(70, false, 'insertEllipse'); // F
+			this.keyHandler.bindAction(88, false, 'insertEllipse'); // X
 			this.keyHandler.bindAction(76, false, 'insertLink'); // L
 			this.keyHandler.bindAction(82, false, 'insertRhombus'); // R
 			this.keyHandler.bindAction(67, false, 'insertEdge'); // C
-			this.keyHandler.bindAction(88, false, 'insertFreehand'); // X
+			this.keyHandler.bindAction(70, false, 'insertFreehand'); // F
 			this.keyHandler.bindAction(69, false, 'freehandEraser'); // E
 			this.keyHandler.bindAction(75, true, 'toggleShapes', true); // Ctrl+Shift+K
 			this.keyHandler.bindAction(54, true, 'adaptiveColors', true); // Ctrl+Shift+6

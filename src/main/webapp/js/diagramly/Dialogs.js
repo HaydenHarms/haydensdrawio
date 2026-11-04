@@ -11431,6 +11431,10 @@ var FreehandWindow = function(editorUi, x, y, w, h, withBrush)
 	mxEvent.addListener(modeSelect, 'change', mxUtils.bind(this, function()
 	{
 		this.setMode(modeSelect.value);
+
+		// Returns focus to the diagram so the F and E hotkeys keep working
+		modeSelect.blur();
+		graph.container.focus();
 	}));
 
 	var startBtn = mxUtils.button(mxResources.get('startDrawing'), mxUtils.bind(this, function()
@@ -11445,7 +11449,7 @@ var FreehandWindow = function(editorUi, x, y, w, h, withBrush)
 		}
 	}));
 	
-	startBtn.setAttribute('title', mxResources.get('startDrawing') + ' (X)');
+	startBtn.setAttribute('title', mxResources.get('startDrawing') + ' (F)');
 	startBtn.style.width = '90%';
 	startBtn.style.marginLeft = '0px';
 	startBtn.style.position = 'relative';
@@ -11468,10 +11472,10 @@ var FreehandWindow = function(editorUi, x, y, w, h, withBrush)
 		var shortcut = document.createElement('span');
 		shortcut.className = 'geShortcutKey';
 		shortcut.style.margin = '0 2px 4px 0';
-		mxUtils.write(shortcut, 'X');
+		mxUtils.write(shortcut, 'F');
 		startBtn.appendChild(shortcut);
 
-		startBtn.setAttribute('title', mxResources.get(drawing ? 'stopDrawing' : 'startDrawing') + ' (X)');
+		startBtn.setAttribute('title', mxResources.get(drawing ? 'stopDrawing' : 'startDrawing') + ' (F)');
 		startBtn.className = 'geBtn' + (drawing ? ' gePrimaryBtn' : '');
 	});
 

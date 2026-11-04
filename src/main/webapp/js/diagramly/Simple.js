@@ -405,7 +405,7 @@ Editor.themes.push('atlas');
 
 								if (iw >= 680 + eo)
 								{
-									addElt(freehandElt, mxResources.get('freehand') + ' (X)', null, 'X');
+									addElt(freehandElt, mxResources.get('freehand') + ' (F)', null, 'F');
 								}
 							}
 							else
@@ -415,8 +415,8 @@ Editor.themes.push('atlas');
 									mxResources.get('note') + ' (S)', null, 'S');
 								addElt(boxElt, mxResources.get('rectangle') + ' (D)', null, 'D');
 								addElt(this.sidebar.createVertexTemplate('ellipse;whiteSpace=wrap;html=1;shapeInside=1;', 160, 100, '',
-									mxResources.get('ellipse') + ' (F)', true, false, null, true, null, tw, th),
-									mxResources.get('ellipse') + ' (F)', null, 'F');
+									mxResources.get('ellipse') + ' (X)', true, false, null, true, null, tw, th),
+									mxResources.get('ellipse') + ' (X)', null, 'X');
 
 								var edgeStyle = 'edgeStyle=none;orthogonalLoop=1;jettySize=auto;html=1;';
 								var cell = new mxCell('', new mxGeometry(0, 0, this.editor.graph.defaultEdgeLength + 20, 0), edgeStyle);
@@ -437,7 +437,7 @@ Editor.themes.push('atlas');
 								cell.geometry.setTerminalPoint(new mxPoint(0, 20), true);
 								cell.geometry.setTerminalPoint(new mxPoint(cell.geometry.width, 20), false);
 								
-								addElt(freehandElt, mxResources.get('freehand') + ' (X)', null, 'X');
+								addElt(freehandElt, mxResources.get('freehand') + ' (F)', null, 'F');
 								this.sketchPickerMenuElt.appendChild(shapesElt);
 							}
 							

@@ -3,7 +3,7 @@
 A trimmed, offline-only build of the [draw.io](https://github.com/jgraph/drawio) diagram editor, published at **https://haydenharms.github.io/haydensdrawio/**.
 
 - Opens on a blank diagram and saves to your device. No cloud storage or integrations.
-- The Freehand window (X) adds an **Eraser** mode (E) that erases the freehand drawings it touches.
+- The Freehand window (F starts and stops drawing) adds an **Eraser** mode (E) that erases the freehand drawings it touches. X inserts an ellipse.
 
 ## How it's built
 
