@@ -11263,9 +11263,10 @@ var FreehandWindow = function(editorUi, x, y, w, h, withBrush)
 		{
 			var smoothing = graph.freehand.getSmoothing();
 
-			editorUi.prompt(mxResources.get('smoothing') + ' (1-20)', smoothing, function(newValue)
+			editorUi.prompt(mxResources.get('smoothing') + ' (0-20)', smoothing, function(newValue)
 			{
-				if (!isNaN(newValue) && newValue > 0 && newValue <= 20)
+				if (newValue != null && newValue !== '' && !isNaN(newValue) &&
+					newValue >= 0 && newValue <= 20)
 				{
 					graph.freehand.setSmoothing(parseInt(newValue));
 				}

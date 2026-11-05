@@ -90,14 +90,18 @@ function mxFreehand(graph)
 		selectInserted = value;
 	};
 
+	// Smoothing 0 disables both the point averaging buffer and the
+	// streamline and outline smoothing of the brush
 	this.setSmoothing = function(smoothing)
 	{
-		bufferSize = smoothing;
+		bufferSize = Math.max(mxFreehand.prototype.NO_SMOOTHING, smoothing);
+		perfectFreehandOptions.smoothing = (smoothing > 0) ? 0.5 : 0;
+		perfectFreehandOptions.streamline = (smoothing > 0) ? 0.5 : 0;
 	};
 
 	this.getSmoothing = function()
 	{
-		return bufferSize;
+		return (perfectFreehandOptions.streamline == 0) ? 0 : bufferSize;
 	};
 	
 	this.setPerfectFreehandMode = function(value)
