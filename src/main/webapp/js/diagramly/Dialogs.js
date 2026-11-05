@@ -28234,6 +28234,11 @@ EraserTool.prototype.start = function()
 			this.editorUi.hoverIcons.reset();
 		}
 
+		// Quick drags close to each other are not double taps, which would
+		// drop the mouse up of the drag
+		this.doubleTapEnabled = graph.doubleTapEnabled;
+		graph.doubleTapEnabled = false;
+
 		this.panning = false;
 		this.active = true;
 		graph.container.classList.add('geEraserMode');
@@ -28250,6 +28255,7 @@ EraserTool.prototype.cancel = function()
 	{
 		this.active = false;
 		this.reset(true);
+		this.graph.doubleTapEnabled = this.doubleTapEnabled;
 
 		if (this.graph.container != null)
 		{

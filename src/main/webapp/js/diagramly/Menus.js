@@ -573,6 +573,15 @@
 			// Mode of the freehand window before switching to the eraser
 			var previousFreehandMode = null;
 
+			// Returns the mode to draw in after the eraser, which is the brush
+			// unless the polygon or the tie tool was used before
+			var getPenMode = function()
+			{
+				return (previousFreehandMode == 'polygon' ||
+					previousFreehandMode == 'tie') ?
+					previousFreehandMode : 'brush';
+			};
+
 			var freehandAction = editorUi.actions.put('insertFreehand', new Action('freehand', function()
 			{
 				if (graph.isEnabled())
@@ -589,8 +598,7 @@
 						// Starts the pen instead of the eraser
 						if (editorUi.freehandWindow.getMode() == 'eraser')
 						{
-							editorUi.freehandWindow.setMode((previousFreehandMode != null) ?
-								previousFreehandMode : 'freehand');
+							editorUi.freehandWindow.setMode(getPenMode());
 						}
 
 						editorUi.freehandWindow.startDrawing();
@@ -624,8 +632,7 @@
 
 					if (mode == 'eraser' && wnd.isDrawing())
 					{
-						wnd.setMode((previousFreehandMode != null) ?
-							previousFreehandMode : 'freehand');
+						wnd.setMode(getPenMode());
 					}
 					else
 					{

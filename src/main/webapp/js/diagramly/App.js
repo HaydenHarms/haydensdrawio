@@ -3447,6 +3447,26 @@ App.prototype.resetRecent = function(type)
 };
 
 /**
+ * Saves the delayed changes of the current file when the page is hidden (eg.
+ * when switching apps on a tablet), as saving waits for a pause while
+ * drawing (see DrawioFile.drawingAutosaveDelay).
+ */
+App.prototype.addBeforeUnloadListener = function()
+{
+	EditorUi.prototype.addBeforeUnloadListener.apply(this, arguments);
+
+	mxEvent.addListener(document, 'visibilitychange', mxUtils.bind(this, function()
+	{
+		var file = this.getCurrentFile();
+
+		if (document.visibilityState == 'hidden' && file != null)
+		{
+			file.flushSaves();
+		}
+	}));
+};
+
+/**
  * Sets the onbeforeunload for the application
  */
 App.prototype.onBeforeUnload = function()

@@ -161,6 +161,66 @@ DrawioFile.prototype.saveCompleted = function()
 DrawioFile.prototype.maxAutosaveDelay = 30000;
 
 /**
+ * Specifies the delay between the last change and the autosave or draft
+ * save while drawing with the freehand window. Saving blocks the pen, so it
+ * waits for a pause in writing instead of saving after every stroke.
+ */
+DrawioFile.prototype.drawingAutosaveDelay = 10000;
+
+/**
+ * Specifies the maximum delay before an autosave or draft save is forced
+ * while drawing with the freehand window.
+ */
+DrawioFile.prototype.maxDrawingAutosaveDelay = 120000;
+
+/**
+ * Specifies the delay for checking again if a save was due while the pen
+ * was down.
+ */
+DrawioFile.prototype.strokeAutosaveDelay = 500;
+
+/**
+ * Returns true if the freehand window is drawing (see FreehandWindow).
+ */
+DrawioFile.prototype.isDrawing = function()
+{
+	var graph = this.ui.editor.graph;
+
+	return (this.ui.freehandWindow != null && this.ui.freehandWindow.isDrawing()) ||
+		(graph.freehand != null && graph.freehand.isDrawing());
+};
+
+/**
+ * Runs the pending autosave and draft save now.
+ */
+DrawioFile.prototype.flushSaves = function()
+{
+	if (this.autosaveThread != null && this.autosaveHandlers != null)
+	{
+		this.autosave(0, 0, this.autosaveHandlers[0], this.autosaveHandlers[1]);
+	}
+
+	if (this.saveDraftThread != null && this.saveDraftHandler != null)
+	{
+		window.clearTimeout(this.saveDraftThread);
+		this.saveDraftThread = null;
+		this.lastDraftSave = Date.now();
+		this.saveDraft();
+	}
+};
+
+/**
+ * Returns true if the pen of the freehand or eraser tool is down.
+ */
+DrawioFile.prototype.isStroking = function()
+{
+	var graph = this.ui.editor.graph;
+
+	return (graph.freehand != null && graph.freehand.isActive()) ||
+		(this.ui.eraserTool != null && this.ui.eraserTool.candidates != null);
+};
+
+/**
  * Specifies the delay for loading the file after an optimistic sync message.
  * This should be the delay for the file to be saved minus the delay for the
  * sync message to travel.
@@ -3259,26 +3319,45 @@ DrawioFile.prototype.addUnsavedStatus = function(err)
 			if (EditorUi.enableDrafts && (this.getMode() == null || EditorUi.isElectronApp))
 			{
 				this.lastDraftSave = this.lastDraftSave || Date.now();
+				var drawing = this.isDrawing();
+
+				// Max delay without saving is double the delay for autosave or 30 sec
+				// and longer while drawing (see drawingAutosaveDelay)
+				var maxDraftDelay = Math.max(2 * EditorUi.draftSaveDelay, 30000,
+					(drawing) ? this.maxDrawingAutosaveDelay : 0);
+				var draftDelay = Math.max(EditorUi.draftSaveDelay || 0,
+					(drawing) ? this.drawingAutosaveDelay : 0);
 
 				if (this.saveDraftThread != null)
 				{
 					window.clearTimeout(this.saveDraftThread);
 					this.saveDraftThread = null;
 
-					// Max delay without saving is double the delay for autosave or 30 sec
-					if (Date.now() - this.lastDraftSave > Math.max(2 * EditorUi.draftSaveDelay, 30000))
+					if (Date.now() - this.lastDraftSave > maxDraftDelay && !this.isStroking())
 					{
 						this.lastDraftSave = Date.now();
 						this.saveDraft();
 					}
 				}
 
-				this.saveDraftThread = window.setTimeout(mxUtils.bind(this, function()
+				var saveDraft = mxUtils.bind(this, function()
 				{
-					this.lastDraftSave = Date.now();
-					this.saveDraftThread = null;
-					this.saveDraft();
-				}), EditorUi.draftSaveDelay || 0);
+					// Waits for the end of the stroke
+					if (this.isStroking())
+					{
+						this.saveDraftThread = window.setTimeout(saveDraft,
+							this.strokeAutosaveDelay);
+					}
+					else
+					{
+						this.lastDraftSave = Date.now();
+						this.saveDraftThread = null;
+						this.saveDraft();
+					}
+				});
+
+				this.saveDraftThread = window.setTimeout(saveDraft, draftDelay);
+				this.saveDraftHandler = saveDraft;
 			}
 		}
 	}
@@ -4190,7 +4269,7 @@ DrawioFile.prototype.fileSaved = function(savedData, lastDesc, success, error, t
 /**
  * Adds the listener for automatically saving the diagram for local changes.
  */
-DrawioFile.prototype.autosave = function(delay, maxDelay, success, error)
+DrawioFile.prototype.autosave = function(delay, maxDelay, success, error, afterStroke)
 {
 	if (this.appUpgradeRequired) return;
 
@@ -4199,12 +4278,27 @@ DrawioFile.prototype.autosave = function(delay, maxDelay, success, error)
 		this.lastAutosave = Date.now();
 	}
 	
+	if (delay > 0 && !afterStroke && this.isDrawing())
+	{
+		delay = Math.max(delay, this.drawingAutosaveDelay);
+		maxDelay = Math.max(maxDelay, this.maxDrawingAutosaveDelay);
+	}
+
 	var tmp = (Date.now() - this.lastAutosave < maxDelay) ? delay : 0;
 	this.clearAutosave();
+	this.autosaveHandlers = [success, error];
 	
 	// Starts new timer or executes immediately if not unsaved for maxDelay
 	var thread = window.setTimeout(mxUtils.bind(this, function()
 	{
+		// Waits for the end of the stroke
+		if (this.isStroking())
+		{
+			this.autosave(this.strokeAutosaveDelay, Infinity, success, error, true);
+
+			return;
+		}
+
 		try
 		{
 			this.lastAutosave = null;
